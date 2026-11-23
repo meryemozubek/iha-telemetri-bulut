@@ -1,0 +1,20 @@
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: iha_postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: iha_telemetri
+      POSTGRES_USER: iha_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD gerekli}
+
+    ports:
+      - "127.0.0.1:5433:5432"
+
+    volumes:
+      - iha_postgres_verileri:/var/lib/postgresql/data
+
+volumes:
+  iha_postgres_verileri:

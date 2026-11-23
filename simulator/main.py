@@ -2,69 +2,92 @@
 import random
 import time
 from datetime import datetime
+from veritabani import telemetri_kaydet
 
 
-# 1. IHA'nin baslangic bilgileri
+# IHA'nin baslangic bilgileri
 enlem = 40.9876
 boylam = 29.1254
 hiz = 20.0
 irtifa = 50.0
 batarya = 100.0
 
-print("IHA Telemetri Simulatoru Baslatildi!")
-print("Programi durdurmak icin CTRL + C tuslarina basin.")
+
+# Yeni telemetri verisi olusturan fonksiyon
+def telemetri_uret():
+    global enlem, boylam, hiz, irtifa, batarya
+
+    # GPS koordinatlarini guncelle
+    enlem += random.uniform(-0.0001, 0.0001)
+    boylam += random.uniform(-0.0001, 0.0001)
+
+    # Hizi guncelle
+    hiz += random.uniform(-3, 3)
+    hiz = max(0, min(80, hiz))
+
+    # Irtifayi guncelle
+    irtifa += random.uniform(-2, 2)
+    irtifa = max(0, min(150, irtifa))
+
+    # Batarya seviyesini azalt
+    batarya = max(0, batarya - 0.2)
+
+    # Guncel tarih ve saat
+    zaman = datetime.now().astimezone().isoformat(timespec="seconds")
+
+    # Verileri bir sozlukte topla
+    telemetri_verisi = {
+        "drone_id": 1,
+        "timestamp": zaman,
+        "latitude": round(enlem, 6),
+        "longitude": round(boylam, 6),
+        "speed": round(hiz, 2),
+        "altitude": round(irtifa, 2),
+        "battery": round(batarya, 2)
+    }
+
+    return telemetri_verisi
 
 
-try:
-    # Batarya bitene kadar ucus verileri uret
-    while batarya > 0:
+# Simulasyonu calistiran fonksiyon
+def simulasyonu_baslat():
 
-        # 2. IHA'nin GPS konumunu degistir
-        enlem += random.uniform(-0.0001, 0.0001)
-        boylam += random.uniform(-0.0001, 0.0001)
+    print("IHA Telemetri Simulatoru Baslatildi!")
+    print("Durdurmak icin CTRL + C tuslarina basin.")
 
-        # 3. IHA'nin hizini guncelle
-        hiz += random.uniform(-3, 3)
-        hiz = max(0, min(80, hiz))
+    
+    try:
+        while batarya > 0:
 
-        # 4. IHA'nin irtifasini guncelle
-        irtifa += random.uniform(-2, 2)
-        irtifa = max(0, min(150, irtifa))
+            # Yeni telemetri verisi uret
+            veri = telemetri_uret()
 
-        # 5. Batarya seviyesini azalt
-        batarya = max(0, batarya - 0.2)
+            # Veriyi PostgreSQL'e kaydet
+            telemetri_kaydet(veri)
 
-        # 6. Verinin olusturuldugu zamani al
-        zaman = datetime.now().astimezone().isoformat(timespec="seconds")
+            # Verileri terminalde goster
+            print("----------------------------------")
+            print("IHA ID:", veri["drone_id"])
+            print("Zaman:", veri["timestamp"])
+            print("GPS:", veri["latitude"], veri["longitude"])
+            print("Hiz:", veri["speed"], "km/sa")
+            print("Irtifa:", veri["altitude"], "metre")
+            print("Batarya:", veri["battery"], "%")
 
-        # 7. Tum ucus verilerini bir sozlukte topla
-        telemetri_verisi = {
-            "drone_id": 1,
-            "timestamp": zaman,
-            "latitude": round(enlem, 6),
-            "longitude": round(boylam, 6),
-            "speed": round(hiz, 2),
-            "altitude": round(irtifa, 2),
-            "battery": round(batarya, 2)
-        }
 
-        # 8. Ucus bilgilerini terminalde goster
-        print("----------------------------------")
-        print("IHA ID:", telemetri_verisi["drone_id"])
-        print("Zaman:", telemetri_verisi["timestamp"])
-        print("GPS:", telemetri_verisi["latitude"], telemetri_verisi["longitude"])
-        print("Hiz:", telemetri_verisi["speed"], "km/sa")
-        print("Irtifa:", telemetri_verisi["altitude"], "metre")
-        print("Batarya:", telemetri_verisi["battery"], "%")
+            # Dusuk batarya uyarisi
+            if veri["battery"] < 20:
+                print("UYARI: Dusuk batarya!")
 
-        # 9. Batarya seviyesi dusukse uyari ver
-        if batarya < 20:
-            print("UYARI: Dusuk batarya!")
+            # Bir saniye bekle
+            time.sleep(1)
 
-        # 10. Yeni veri uretmeden once 1 saniye bekle
-        time.sleep(1)
+        print("Batarya bitti. Simulasyon sona erdi.")
 
-    print("Batarya bitti. Simulasyon sona erdi.")
+    except KeyboardInterrupt:
+        print("\nSimulasyon kullanici tarafindan durduruldu.")
 
-except KeyboardInterrupt:
-    print("\nSimulasyon kullanici tarafindan durduruldu.")
+
+# Programin baslangic noktasi
+if __name__ == "__main__":
+    simulasyonu_baslat()
