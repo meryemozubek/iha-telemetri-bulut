@@ -2,7 +2,7 @@
 import random
 import time
 from datetime import datetime
-from veritabani import telemetri_kaydet
+from veritabani import veritabanina_baglan, telemetri_kaydet
 
 
 # IHA'nin baslangic bilgileri
@@ -50,42 +50,44 @@ def telemetri_uret():
 
 
 # Simulasyonu calistiran fonksiyon
+
 def simulasyonu_baslat():
 
     print("IHA Telemetri Simulatoru Baslatildi!")
     print("Durdurmak icin CTRL + C tuslarina basin.")
 
-    
     try:
-        while batarya > 0:
+        # Veritabanina bir kez baglan
+        with veritabanina_baglan() as baglanti:
 
-            # Yeni telemetri verisi uret
-            veri = telemetri_uret()
+            while batarya > 0:
 
-            # Veriyi PostgreSQL'e kaydet
-            telemetri_kaydet(veri)
+                # Yeni telemetri verisi uret
+                veri = telemetri_uret()
 
-            # Verileri terminalde goster
-            print("----------------------------------")
-            print("IHA ID:", veri["drone_id"])
-            print("Zaman:", veri["timestamp"])
-            print("GPS:", veri["latitude"], veri["longitude"])
-            print("Hiz:", veri["speed"], "km/sa")
-            print("Irtifa:", veri["altitude"], "metre")
-            print("Batarya:", veri["battery"], "%")
+                # Ayni baglantiyi kullanarak kaydet
+                telemetri_kaydet(baglanti, veri)
 
+                # Verileri terminalde goster
+                print("----------------------------------")
+                print("IHA ID:", veri["drone_id"])
+                print("Zaman:", veri["timestamp"])
+                print("GPS:", veri["latitude"], veri["longitude"])
+                print("Hiz:", veri["speed"], "km/sa")
+                print("Irtifa:", veri["altitude"], "metre")
+                print("Batarya:", veri["battery"], "%")
 
-            # Dusuk batarya uyarisi
-            if veri["battery"] < 20:
-                print("UYARI: Dusuk batarya!")
+                # Dusuk batarya uyarisi
+                if veri["battery"] < 20:
+                    print("UYARI: Dusuk batarya!")
 
-            # Bir saniye bekle
-            time.sleep(1)
+                time.sleep(1)
 
-        print("Batarya bitti. Simulasyon sona erdi.")
+            print("Batarya bitti. Simulasyon sona erdi.")
 
     except KeyboardInterrupt:
         print("\nSimulasyon kullanici tarafindan durduruldu.")
+
 
 
 # Programin baslangic noktasi
