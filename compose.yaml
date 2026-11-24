@@ -27,11 +27,17 @@ services:
     container_name: iha_grafana
     restart: unless-stopped
 
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD gerekli}
+
     ports:
       - "127.0.0.1:3000:3000"
 
     volumes:
       - iha_grafana_verileri:/var/lib/grafana
+      - ./grafana/provisioning/datasources/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
+      - ./grafana/provisioning/dashboards/dashboard.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml:ro
+      - ./grafana/dashboard.json:/var/lib/grafana/dashboards/dashboard.json:ro
 
     depends_on:
       - postgres
