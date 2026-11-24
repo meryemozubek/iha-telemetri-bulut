@@ -1,0 +1,11 @@
+-- IHA telemetri tablosunu olustur
+CREATE TABLE IF NOT EXISTS telemetry (
+    id BIGSERIAL PRIMARY KEY,
+    drone_id INTEGER NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    speed DOUBLE PRECISION NOT NULL,
+    altitude DOUBLE PRECISION NOT NULL,
+    battery DOUBLE PRECISION NOT NULL
+);
