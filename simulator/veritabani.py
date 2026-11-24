@@ -1,4 +1,3 @@
-
 import os
 from pathlib import Path
 
@@ -16,10 +15,10 @@ load_dotenv(proje_klasoru / ".env")
 # PostgreSQL baglantisi olustur
 def veritabanina_baglan():
     baglanti = psycopg.connect(
-        host="127.0.0.1",
-        port=5433,
-        dbname="iha_telemetri",
-        user="iha_user",
+        host=os.getenv("POSTGRES_HOST", "127.0.0.1"),
+        port=int(os.getenv("POSTGRES_PORT", "5433")),
+        dbname=os.getenv("POSTGRES_DB", "iha_telemetri"),
+        user=os.getenv("POSTGRES_USER", "iha_user"),
         password=os.getenv("POSTGRES_PASSWORD")
     )
 
