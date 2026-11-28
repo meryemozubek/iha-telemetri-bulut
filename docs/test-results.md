@@ -276,3 +276,228 @@ Python simülatörü tarafından üretilen GPS, hız, irtifa ve batarya verileri
 Gerçekleştirilen testlerde sistemin hedeflenen veri kayıt hızına ulaştığı, düşük kaynak tüketimiyle çalıştığı ve konteynerlerin yeniden oluşturulması sırasında kayıt sayısının korunduğu gözlemlenmiştir.
 
 Sonuçlar, geliştirilen sistemin belirlenen temel işlevsel gereksinimleri mevcut deney koşulları altında karşılayabildiğini göstermektedir.
+---
+
+## Ek Deneysel Testler ve Hata Orani Analizi
+
+### Test Tarihi
+
+28.11.2026
+
+### Testin Amaci
+
+Telemetri verilerinin PostgreSQL veritabanina kaydedilmesi
+sirasinda olusan basarili ve basarisiz kayit girisimlerinin
+belirlenmesi, hata yonetiminin dogrulanmasi ve sistemin
+bulut ortamindaki kayit performansinin olculmesi amaclanmistir.
+
+Bu kapsamda Python simulatorune toplam girisim, basarili kayit,
+basarisiz kayit ve belirsiz girisim sayaclari eklenmistir.
+Test suresi time.monotonic() fonksiyonu ile olculmustur.
+
+### 1. Yerel Normal Calisma Testi
+
+Simulator, yerel bilgisayarda PostgreSQL veritabanina
+baglanarak normal calisma kosullarinda test edilmistir.
+
+| Olcut | Sonuc |
+|---|---:|
+| Toplam kayit girisimi | 15 |
+| Basarili kayit | 15 |
+| Basarisiz kayit | 0 |
+| Belirsiz girisim | 0 |
+| Test suresi | 14.66 saniye |
+| Basari orani | %100 |
+| Hata orani | %0 |
+
+Test sonucunda normal calisma kosullarinda herhangi bir
+kayit hatasi gozlemlenmemistir.
+
+### 2. Kontrollu Hata Testi
+
+Hata yonetiminin dogrulanmasi icin simulator/hata_testi.py
+dosyasi olusturulmustur.
+
+Her besinci kayit girisiminde drone_id alanina None degeri
+atanarak PostgreSQL NOT NULL kisitinin ihlal edilmesi
+saglanmistir.
+
+| Olcut | Sonuc |
+|---|---:|
+| Toplam kayit girisimi | 19 |
+| Basarili kayit | 16 |
+| Basarisiz kayit | 3 |
+| Belirsiz girisim | 0 |
+| Test suresi | 18.42 saniye |
+| Basari orani | %84.21 |
+| Hata orani | %15.79 |
+
+PostgreSQL, 5., 10. ve 15. kayit girisimlerini reddetmistir.
+Python tarafinda psycopg.Error ile hatalar yakalanmis ve
+rollback() islemi uygulanmistir.
+
+Simulator, hatali kayitlardan sonra calismaya devam etmis
+ve sonraki gecerli verileri veritabanina kaydetmistir.
+
+Bu testteki hata orani bilerek olusturulan gecersiz verilerden
+kaynaklanmaktadir. Normal sistem performansini temsil etmez.
+
+### 3. AWS Bulut Ortami Normal Calisma Testi
+
+#### Test Ortami
+
+- Bulut saglayicisi: Amazon Web Services (AWS)
+- Sanal sunucu: EC2 t3.small
+- Bolge: eu-north-1 (Stockholm)
+- Islemci: 2 vCPU
+- Bellek: 2 GiB RAM
+- Isletim sistemi: Ubuntu 26.04.1 LTS
+- Konteyner yonetimi: Docker Compose
+- Veritabani: PostgreSQL 15
+- Gorsellestirme: Grafana 12.3.0
+- Programlama dili: Python 3.10
+
+#### Test Yontemi
+
+Guncellenen simulator kaynak kodu GitHub uzerinden AWS
+sunucusuna aktarilmis ve Docker imaji yeniden olusturulmustur.
+
+Simulator, baslangic bataryasi %100 olacak sekilde
+calistirilmis ve batarya tamamen tukenene kadar herhangi
+bir manuel mudahale yapilmamistir.
+
+Test sirasinda bilerek hata olusturulmamistir.
+
+#### Test Sonuclari
+
+| Olcut | Sonuc |
+|---|---:|
+| Toplam kayit girisimi | 500 |
+| Basarili kayit | 500 |
+| Basarisiz kayit | 0 |
+| Belirsiz girisim | 0 |
+| Test suresi | 501.48 saniye |
+| Basari orani | %100 |
+| Hata orani | %0 |
+| Ortalama kayit hizi | 0.997 kayit/saniye |
+
+#### Veritabani Dogrulamasi
+
+| Olcut | Kayit Sayisi |
+|---|---:|
+| Test oncesi kayit sayisi | 1648 |
+| Test sonrasi kayit sayisi | 2148 |
+| Eklenen yeni kayit sayisi | 500 |
+
+Kayit artisi:
+
+2148 - 1648 = 500 kayit
+
+Python tarafinda olculen basarili kayit sayisi ile
+PostgreSQL veritabanindaki kayit sayisi artisi eslesmistir.
+
+### 4. Performans Hesaplamalari
+
+Hata orani:
+
+Hata orani = (Basarisiz kayit / Toplam girisim) x 100
+
+AWS testi:
+
+Hata orani = (0 / 500) x 100 = %0
+
+Basari orani:
+
+Basari orani = (Basarili kayit / Toplam girisim) x 100
+
+AWS testi:
+
+Basari orani = (500 / 500) x 100 = %100
+
+Ortalama kayit hizi:
+
+500 / 501.48 = 0.997 kayit/saniye
+
+Ortalama dongu suresi:
+
+501.48 / 500 = 1.003 saniye/kayit
+
+Bu sure, yalnizca veritabani sorgu gecikmesini degil,
+simulatorun bekleme suresi dahil toplam calisma suresini
+temsil etmektedir.
+
+### 5. Deneysel Testlerin Karsilastirilmasi
+
+| Olcut | Yerel Normal | Kontrollu Hata | AWS Normal |
+|---|---:|---:|---:|
+| Toplam girisim | 15 | 19 | 500 |
+| Basarili kayit | 15 | 16 | 500 |
+| Basarisiz kayit | 0 | 3 | 0 |
+| Belirsiz girisim | 0 | 0 | 0 |
+| Sure (saniye) | 14.66 | 18.42 | 501.48 |
+| Basari orani | %100 | %84.21 | %100 |
+| Hata orani | %0 | %15.79 | %0 |
+
+### 6. Ornek Veri Seti
+
+AWS PostgreSQL veritabaninda bulunan telemetri kayitlari
+CSV formatinda disa aktarilmistir.
+
+- Dosya: data/sample_telemetry.csv
+- Veri sayisi: 1648
+- Baslik dahil satir sayisi: 1649
+- Sutun sayisi: 8
+- Dosya boyutu: Yaklasik 105 KB
+- Aktarim yontemi: SCP
+
+Veri seti simulator tarafindan uretilen sentetik
+telemetri verilerinden olusmaktadir.
+
+CSV dosyasi son 500 kayitlik AWS testinden once
+olusturuldugu icin bu testin kayitlarini icermemektedir.
+
+### 7. Test Kanitlari
+
+AWS testinin terminal ciktilari tee komutu kullanilarak
+bir log dosyasina kaydedilmistir.
+
+Log dosyasi:
+
+[aws-telemetry-test.log](test-evidence/aws-telemetry-test.log)
+
+Ornek veri seti:
+
+[sample_telemetry.csv](../data/sample_telemetry.csv)
+
+### 8. Sonuclarin Degerlendirilmesi
+
+AWS ortaminda gerceklestirilen 500 kayitlik testte
+herhangi bir kayit hatasi gozlemlenmemistir.
+
+Sistem, saniyede yaklasik bir telemetri kaydi olusturma
+hedefine ulasmistir.
+
+Kontrollu hata testinde gecersiz verilerin PostgreSQL
+tarafindan reddedildigi ve simulatorun sonraki kayitlara
+devam edebildigi dogrulanmistir.
+
+Onceki kaynak tuketimi testlerinde olculen ortalama
+toplam CPU kullanimi yaklasik %0.462, toplam konteyner
+bellek kullanimi ise 342.15 MiB olarak belirlenmistir.
+
+Bu olcumler ayri test kosularinda gerceklestirilmistir.
+
+### 9. Testlerin Sinirliliklari
+
+- Testler tek bir sanal IHA ile gerceklestirilmistir.
+- Gercek IHA veya fiziksel sensor kullanilmamistir.
+- Uzun sureli ve yuksek yuk altinda stres testi yapilmamistir.
+- Tam baglanti kopmasi ve otomatik yeniden baglanma
+  mekanizmasi test edilmemistir.
+- Veritabani kayit gecikmesi bagimsiz olarak olculmemistir.
+- AWS testindeki %0 hata orani yalnizca gerceklestirilen
+  500 kayitlik deneyin sonucunu temsil etmektedir.
+
+Elde edilen sonuclar sistemin belirlenen test kosullarinda
+basarili calistigini gostermektedir. Tum olasi calisma
+kosullarinda hatasiz calisacagini garanti etmemektedir.
